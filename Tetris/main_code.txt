@@ -1,0 +1,1082 @@
+#include<stdio.h>
+#include<windows.h>
+#include<conio.h>
+#include<time.h>
+#include<stdlib.h>
+#include <time.h>
+#include<process.h>
+#include <fmod.hpp>
+#pragma comment(lib, "fmodL_vc.lib") //음악재생 라이브러리 추가
+using namespace FMOD;
+#define random(n) (rand()%n) //랜덤값을 쉽게 얻기위함
+
+BOOL isMoving = FALSE; //gotoxy중복사용 방지
+
+void gotoxy(int x, int y) { //좌표이동 함수 
+	COORD pos = { x, y };
+	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
+}
+
+void gotoxyPrint(int x, int y, char* str) { //gotoxy후 출력
+	while (isMoving) {}
+	isMoving = TRUE;
+	gotoxy(x, y);
+	printf(str);
+	isMoving = FALSE;
+}
+
+typedef enum { NOCURSOR, SOLIDCURSOR, NORMALCURSOR } CURSOR_TYPE;
+void setcursortype(CURSOR_TYPE c){ //커서 안보이게 하는 함수 
+	CONSOLE_CURSOR_INFO CurInfo;
+
+	switch (c) {
+	case NOCURSOR:
+		CurInfo.dwSize = 1;
+		CurInfo.bVisible = FALSE;
+		break;
+	case SOLIDCURSOR:
+		CurInfo.dwSize = 100;
+		CurInfo.bVisible = TRUE;
+		break;
+	case NORMALCURSOR:
+		CurInfo.dwSize = 20;
+		CurInfo.bVisible = TRUE;
+		break;
+	}
+	SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &CurInfo);
+}
+
+#define BX 5
+#define BY 1
+#define BW 12
+#define BH 22
+//보드의 크기 정의
+
+void DrawScreen(); //배경 출력
+BOOL ProcessKey(BOOL player); //키입력
+
+void DrawBoard(); //보드판 출력
+void DrawBoard2();
+
+void PrintBrick(BOOL Show); //블록 출력
+void PrintBrick2(BOOL Show);
+
+void PrintHold(BOOL Show); //홀드한 블록 출력
+void PrintHold2(BOOL Show);
+
+void PrintnBrick(BOOL Show); //다음 블록 출력
+void PrintnBrick2(BOOL Show);
+
+int GetAround(int x, int y, int b, int r); //주변에 블록이나 벽이 있는지 확인
+int GetAround2(int x, int y, int b, int r);
+
+BOOL MoveDown(); //블록을 밑으로 내림
+BOOL MoveDown2();
+
+void TestFull(); //줄이 다 채워졌는지 확인
+void TestFull2();
+
+struct Point {
+	int x, y;
+};
+
+struct Board{
+	int color;
+	int tile;
+};
+
+Point Shape[][4][4] = {
+	{ { 0, 0, 1, 0, 2, 0, -1, 0 }, { 0, 0, 0, 1, 0, -1, 0, -2 }, { 0, 0, 1, 0, 2, 0, -1, 0 }, { 0, 0, 0, 1, 0, -1, 0, -2 } },
+	{ { 0, 0, 1, 0, 0, 1, 1, 1 }, { 0, 0, 1, 0, 0, 1, 1, 1 }, { 0, 0, 1, 0, 0, 1, 1, 1 }, { 0, 0, 1, 0, 0, 1, 1, 1 } },
+	{ { 0, 0, -1, 0, 0, -1, 1, -1 }, { 0, 0, 0, 1, -1, 0, -1, -1 }, { 0, 0, -1, 0, 0, -1, 1, -1 }, { 0, 0, 0, 1, -1, 0, -1, -1 } },
+	{ { 0, 0, -1, -1, 0, -1, 1, 0 }, { 0, 0, -1, 0, -1, 1, 0, -1 }, { 0, 0, -1, -1, 0, -1, 1, 0 }, { 0, 0, -1, 0, -1, 1, 0, -1 } },
+	{ { 0, 0, -1, 0, 1, 0, -1, -1 }, { 0, 0, 0, -1, 0, 1, -1, 1 }, { 0, 0, -1, 0, 1, 0, 1, 1 }, { 0, 0, 0, -1, 0, 1, 1, -1 } },
+	{ { 0, 0, 1, 0, -1, 0, 1, -1 }, { 0, 0, 0, 1, 0, -1, -1, -1 }, { 0, 0, 1, 0, -1, 0, -1, 1 }, { 0, 0, 0, -1, 0, 1, 1, 1 } },
+	{ { 0, 0, -1, 0, 1, 0, 0, 1 }, { 0, 0, 0, -1, 0, 1, 1, 0 }, { 0, 0, -1, 0, 1, 0, 0, -1 }, { 0, 0, -1, 0, 0, -1, 0, 1 } },
+}; //테트리스 모양 정의
+
+enum { EMPTY, BRICK, WALL };
+enum gameMode{ WAIT, SINGLE, MULTI };
+gameMode gameState = WAIT;
+char *arTile[] = { " ", "■", "□" };
+Board board[BW + 2][BH + 2];
+Board board2[BW + 2][BH + 2];
+int nx, ny, nx2, ny2;
+int brick, rot, nbrick, brick2, rot2, nbrick2;
+int hold = -1, hold2 = -1;
+int nFrame, nFrame2;
+char name[100], name2[100];
+int score, score2;
+int bricknum = 0, bricknum2 = 0;
+int timer = 0;
+int winner = -1; //0: player1, 1: player2
+//게임 실행을 위한 여러가지 변수 정의
+/*************
+2붙은것은 Player2용 변수
+gameState: 게임의 상태
+arTile: 블록의 모양 정의
+board: 전체적인 보드판
+nx: 현재 블록의 x좌표
+ny: 현재 블록의 y좌표
+brick: 현재 블록 모양
+rot: 블록의 회전
+hold: 현재 홀드 블록
+nbrick: 다음 블록 모양
+nFrame: 난이도
+score: 점수
+bricknum: 쌓은줄
+timer: 지난시간
+winner: 승리자
+**************/
+
+System* _system;
+Channel* chBackground;
+Channel* chAdd;
+Channel* chMovedown;
+Channel* chTestfull;
+Sound* soundBackground;
+Sound* soundAdd;
+Sound* soundMovedown;
+Sound* soundTestfull;
+BOOL soundPlay = TRUE;
+//음악 재생관련 변수
+
+unsigned __stdcall Timer(void *arg){ //시간계산 쓰레드
+	timer = 0;
+	while (1){
+		timer++;
+		Sleep(1000);
+		if (gameState == WAIT) break;
+	}
+	return 0;
+}
+
+unsigned __stdcall Thread(void *arg){ //Player2 쓰레드
+	int nStay;
+	int x, y;
+
+	for (x = 0; x<BW + 2; x++) {
+		for (y = 0; y<BH + 2; y++) {
+			board2[x][y].tile = (y == 0 || y == BH + 1 || x == 0 || x == BW + 1) ? WALL : EMPTY;
+		}
+	}
+	//벽을 넣어준다
+	
+	nFrame2 = 10;
+	score = 0; //초기화
+	//DrawScreen();
+	PrintHold2(TRUE);
+
+	nbrick2 = random(sizeof(Shape) / sizeof(Shape[0])); //다음 블록을 만든다
+	while (1) {
+		if (gameState == WAIT) break;
+		PrintnBrick2(FALSE);
+		brick2 = nbrick2; //블록을 다음으로 옮긴다
+		nbrick2 = random(sizeof(Shape) / sizeof(Shape[0])); //다음 블록을 만든다
+		nx2 = BW / 2; 
+		ny2 = 3;
+		rot2 = 0; //초기화
+		PrintnBrick2(TRUE);
+		PrintBrick2(TRUE);
+		//블록을 표시
+
+		
+		
+		if (GetAround2(nx2, ny2, brick2, rot2) != EMPTY){
+			gameState = WAIT;
+			winner = 0;
+			break; //블록이 끝까지 왔으면 게임오버
+		}
+		nStay = nFrame2; 
+		while (1) {
+			if (gameState == WAIT){ //게임이 끝났으면 나감
+				break;
+			}
+			if (--nStay == 0) {
+				nStay = nFrame2;
+				if (MoveDown2()) break;
+				//시간이 지나면 블록을 내림
+			}
+			if (GetAsyncKeyState(VK_SHIFT)){
+				Sleep(3000);
+				timer -= 2;
+			}
+			if (ProcessKey(TRUE)) break; //true가 반환되면 새로운 블록을 만듬
+			Sleep(1000 / 20); //딜레이
+		}
+		if (gameState == WAIT) break;
+	}
+
+	return 0;
+}
+
+void gameStart(){
+	int x, y;
+	rot = 0;
+	rot2 = 0;
+	nx = 0;
+	nx2 = 0;
+	ny = 0;
+	ny2 = 0;
+	brick = 0;
+	hold = -1;
+	hold2 = -1;
+	bricknum = 0;
+	bricknum2 = 0;
+	score = 0;
+	score2 = 0;
+	winner = -1;
+
+	nbrick = 0;
+	for (x = 0; x<BW + 2; x++) {
+		for (y = 0; y<BH + 2; y++) {
+			board[x][y].tile = (y == 0 || y == BH + 1 || x == 0 || x == BW + 1) ? WALL : EMPTY;
+		}
+	} //초기화
+
+	int nStay;
+
+	system("cls");
+	gotoxyPrint(7, 5, "□□□□□□□□□□□□□□□□□");
+	gotoxyPrint(7, 6, "□                              □");
+	gotoxyPrint(7, 7, "□                              □");
+	gotoxyPrint(7, 8, "□           selectMode         □");
+	gotoxyPrint(7, 9, "□      1: 1인용, 2: 2인용      □");
+	gotoxyPrint(7, 10, "□                              □");
+	gotoxyPrint(7, 11, "□                              □");
+	gotoxyPrint(7, 12, "□□□□□□□□□□□□□□□□□");
+
+	switch (_getch()){
+	case '1':
+		chBackground->setPaused(false); //배경음 다시재생
+		gameState = SINGLE;
+		system("cls");
+		gotoxyPrint(7, 5, "□□□□□□□□□□□□□□□□□");
+		gotoxyPrint(7, 6, "□                              □");
+		gotoxyPrint(7, 7, "□                              □");
+		gotoxyPrint(7, 8, "□ 이름을 입력하세요 (공백불가) □");
+		gotoxyPrint(7, 9, "□      [                   ]   □");
+		gotoxyPrint(7, 10, "□                              □");
+		gotoxyPrint(7, 11, "□                              □");
+		gotoxyPrint(7, 12, "□□□□□□□□□□□□□□□□□");
+
+		gotoxy(17, 9);
+		gets_s(name);
+
+		system("mode con lines=50 cols=70"); //화면크기 조정
+		if(soundPlay) _system->playSound(soundBackground, NULL, FALSE, &chBackground); //배경음악 재생
+		
+		nFrame = 10;
+		DrawScreen();
+		PrintHold(TRUE);
+
+		//쓰레드와 같음
+		nbrick = random(sizeof(Shape) / sizeof(Shape[0]));
+		while (1) {
+			if (gameState == WAIT) break;
+			PrintnBrick(FALSE);
+			brick = nbrick;
+			nbrick = random(sizeof(Shape) / sizeof(Shape[0]));
+			nx = BW / 2;
+			ny = 3;
+			rot = 0;
+			PrintnBrick(TRUE);
+			PrintBrick(TRUE);
+
+
+			if (GetAround(nx, ny, brick, rot) != EMPTY){
+				gameState = WAIT;
+				winner = 1;
+				break;
+			}
+			nStay = nFrame;
+			while (1) {
+				if (gameState == WAIT) break;
+				if (--nStay == 0) {
+					nStay = nFrame;
+					if (MoveDown()) break;
+				}
+
+				
+				if (ProcessKey(FALSE)) break;
+				Sleep(1000 / 20);
+			}
+			if (gameState == WAIT) break;
+		}
+
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+		system("mode con lines=20 cols=50");
+		system("cls");
+		gotoxyPrint(7, 5, "□□□□□□□□□□□□□□□□□");
+		gotoxyPrint(7, 6, "□                              □");
+		gotoxyPrint(7, 7, "□                              □");
+		gotoxyPrint(7, 8, "□           GAME OVER          □");
+		gotoxyPrint(7, 9, "□                              □");
+		char str[100];
+		sprintf_s(str, "  %s님의 점수는 %d점 입니다.", name, score);
+		gotoxyPrint(9, 9, str);
+
+		gotoxyPrint(7, 10, "□ 나가려면 Enter키 눌러주세요  □");
+		gotoxyPrint(7, 11, "□                              □");
+		gotoxyPrint(7, 12, "□□□□□□□□□□□□□□□□□"); //끝난후 기록 출력
+
+		FILE *f;
+		fopen_s(&f, "single.txt", "a");
+		fprintf(f, "%d\n", score);
+		fclose(f);
+
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 0); //글자를 안보이게
+		fflush(stdin);
+		gotoxy(1000, 1000);
+		char buf[10000];
+		gets_s(buf); //기록을 저장
+		chBackground->setPaused(true); //배경음 종료
+		break;
+	case '2':
+		chBackground->setPaused(false);
+		gameState = MULTI;
+		system("cls");
+		gotoxyPrint(7, 5, "□□□□□□□□□□□□□□□□□");
+		gotoxyPrint(7, 6, "□                              □");
+		gotoxyPrint(7, 7, "□                              □");
+		gotoxyPrint(7, 8, "□ 이름을 입력하세요 (공백불가) □");
+		gotoxyPrint(7, 9, "□      [                   ]   □");
+		gotoxyPrint(7, 10, "□      [                   ]   □");
+		gotoxyPrint(7, 11, "□                              □");
+		gotoxyPrint(7, 12, "□                              □");
+		gotoxyPrint(7, 13, "□□□□□□□□□□□□□□□□□");
+
+		gotoxy(17, 9);
+		gets_s(name);
+		gotoxy(17, 10);
+		gets_s(name2);
+
+		system("mode con lines=50 cols=100");
+		if(soundPlay) _system->playSound(soundBackground, NULL, FALSE, &chBackground);
+		nFrame = 10;
+
+		PrintHold(TRUE);
+
+		nbrick = random(sizeof(Shape) / sizeof(Shape[0]));
+		_beginthreadex(NULL, 0, Thread, 0, 0, NULL);  //스레드 시작
+		_beginthreadex(NULL, 0, Timer, 0, 0, NULL);  //타이머 시작
+
+		Sleep(1000);
+		ny = 3;
+		DrawScreen();
+
+		
+
+		while (1) {
+			PrintnBrick(FALSE);
+			brick = nbrick;
+			nbrick = random(sizeof(Shape) / sizeof(Shape[0]));
+			nx = BW / 2;
+			ny = 3;
+			rot = 0;
+			PrintnBrick(TRUE);
+			PrintBrick(TRUE);
+
+			if (GetAround(nx, ny, brick, rot) != EMPTY){
+				gameState = WAIT;
+				winner = 1;
+				break;
+			}
+			nStay = nFrame;
+			while (1) {
+				if (gameState == WAIT) break;
+				if (--nStay == 0) {
+					nStay = nFrame;
+					if (MoveDown()) break;
+				}
+				if (ProcessKey(FALSE)) break;
+				Sleep(1000 / 20);
+			}
+			if (gameState == WAIT) break;
+		}
+
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+		system("mode con lines=20 cols=50");
+		system("cls");
+		gotoxyPrint(7, 5, "□□□□□□□□□□□□□□□□□");
+		gotoxyPrint(7, 6, "□                              □");
+		gotoxyPrint(7, 7, "□                              □");
+		gotoxyPrint(7, 8, "□           GAME OVER          □");
+
+		char s[100];
+		sprintf_s(s, "□          기록: %d초          □", timer);
+		gotoxyPrint(7, 9, s);
+
+		char n[100], n2[100];
+		if (winner){
+			strcpy_s(n, name2);
+			strcpy_s(n2, name);
+		}
+		else{
+			strcpy_s(n, name);
+			strcpy_s(n2, name2);
+		}
+		sprintf_s(s, "□        %s(승) %s(패)         □", n, n2);
+		gotoxyPrint(7, 10, s);
+
+		gotoxyPrint(7, 11, "□ 나가려면 Enter키 눌러주세요  □");
+		gotoxyPrint(7, 12, "□                              □");
+		gotoxyPrint(7, 13, "□□□□□□□□□□□□□□□□□"); //승/패자 출력
+
+		fopen_s(&f, "multi.txt", "a");
+		fprintf(f, "%d\n", timer);
+		fclose(f);
+
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 0);
+		fflush(stdin);
+		gotoxy(100, 100);
+		gets_s(buf);
+		chBackground->setPaused(true);
+		break;
+	}
+}
+
+void Config(){
+	system("cls");
+	gotoxyPrint(7, 5, "□□□□□□□□□□□□□□□□□");
+	gotoxyPrint(7, 6, "□                              □");
+	gotoxyPrint(7, 7, "□                              □");
+	gotoxyPrint(7, 8, "□             사운드           □");
+	gotoxyPrint(7, 9, "□         Y: ON, N: OFF        □");
+	gotoxyPrint(7, 10, "□                              □");
+	gotoxyPrint(7, 11, "□                              □");
+	gotoxyPrint(7, 12, "□□□□□□□□□□□□□□□□□");
+	switch (_getch()){
+	case 'y':
+	case 'Y':
+		soundPlay = TRUE;
+		break;
+	case 'n':
+	case 'N':
+		soundPlay = FALSE;
+		break;
+	}
+}
+
+void Ranking(){
+	int i = 0, j = 0, k, tmp;
+	char temp[10];
+	system("mode con lines=40 cols=50");
+	FILE *f;
+	int single[10], multi[10];
+	fopen_s(&f, "single.txt", "r");
+	while (fgets(temp, 255, f)) single[i++] = atoi(temp);
+	fclose(f);
+
+	fopen_s(&f, "multi.txt", "r");
+	while (fgets(temp, 255, f)) multi[j++] = atoi(temp);
+	
+	fclose(f);//저장한 정보를 불러옴
+
+	for (int k = 0; k < i; k++)
+		for (int l = 0; l < i - 1; l++)
+			if (single[l] < single[l + 1]){
+				tmp = single[l];
+				single[l] = single[l + 1];
+				single[l + 1] = tmp;
+			}
+
+	for (int k = 0; k < j; k++)
+		for (int l = 0; l < j - 1; l++)
+			if (multi[l] > multi[l + 1]){
+				tmp = multi[l];
+				multi[l] = multi[l + 1];
+				multi[l + 1] = tmp;
+			}
+	//정보를 기록순으로 정렬시킨다
+	
+	gotoxyPrint(7, 3, "□□□□□□□□□□□□□□□□□");
+	gotoxyPrint(7, 4, "□                              □");
+	gotoxyPrint(7, 5, "□           SingleMode         □");
+
+	i = (i < 10) ? i : 10;
+	for (int k = 0; k < i; k++){
+		gotoxy(7, k + 6);
+		printf("□           %2d등: %3d점        □", k+1, single[k]);
+	}
+
+	j = (j < 10) ? j : 10;
+	gotoxyPrint(7, j + 7, "□           MultiMode          □");
+	gotoxyPrint(7, j + 6, "□                              □");
+
+	for (k = 0; k < j; k++){
+		gotoxy(7, j + k + 8);
+		printf("□           %2d등: %3d초        □", k+1, multi[k]);
+	}
+
+	gotoxyPrint(7, j + k + 8, "□                              □");
+	gotoxyPrint(7, j + k + 9, "□□□□□□□□□□□□□□□□□");
+
+
+	_getch();
+}
+
+void Help(){
+	gotoxyPrint(7, 3, "□□□□□□□□□□□□□□□□□");
+	gotoxyPrint(7, 4, "□                              □");
+	gotoxyPrint(7, 5, "□                              □");
+	gotoxyPrint(7, 6, "□      화살표: Player2 이동    □");
+	gotoxyPrint(7, 7, "□       O : Player2 홀드       □");
+	gotoxyPrint(7, 8, "□        P  : Player2 내리기   □");
+	gotoxyPrint(7, 9, "□      T,F,G,H: Player1 이동   □");
+	gotoxyPrint(7, 10, "□      Q: Player2 홀드         □");
+	gotoxyPrint(7, 11, "□      W: Player2 내리기       □");
+	gotoxyPrint(7, 11, "□     SHIFT: 화면 클리어       □");
+	gotoxyPrint(7, 12, "□                              □");
+	gotoxyPrint(7, 13, "□                              □");
+	gotoxyPrint(7, 14, "□□□□□□□□□□□□□□□□□");
+	gotoxyPrint(7, 15, "             아무 키나 누르면     ");
+	gotoxyPrint(7, 16, "             메인으로 돌아갑니다  ");
+
+	_getch();
+}
+
+void main()
+{
+	int nStay;
+	int x, y;
+
+	System_Create(&_system);
+	_system->init(4, FMOD_INIT_NORMAL, NULL);
+	_system->createSound("background.mp3", IMO_HARDWARE, NULL, &soundBackground);
+	_system->createSound("blockMovedown.mp3", IMO_HARDWARE, NULL, &soundMovedown);
+	_system->createSound("blockAdd.mp3.mp3", IMO_HARDWARE, NULL, &soundAdd);
+	_system->createSound("blockTestfull.mp3", IMO_HARDWARE, NULL, &soundTestfull);
+	soundBackground->setLoopCount(100);
+	//음악재생 관련 함수
+
+	setcursortype(NOCURSOR);
+	srand(time(NULL));
+	
+	system("cls");
+	
+
+	while (1){
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+		system("mode con lines=20 cols=50");
+		gotoxyPrint(7, 5, "□□□□□□□□□□□□□□□□□");
+		gotoxyPrint(7, 6, "□                              □");
+		gotoxyPrint(7, 7, "□                              □");
+		gotoxyPrint(7, 8, "□         1. 게임시작          □");
+		gotoxyPrint(7, 9, "□         2. 설정              □");
+		gotoxyPrint(7, 10, "□         3. 랭킹              □");
+		gotoxyPrint(7, 11, "□         4. 도움말            □");
+		gotoxyPrint(7, 12, "□                              □");
+		gotoxyPrint(7, 13, "□                              □");
+		gotoxyPrint(7, 14, "□□□□□□□□□□□□□□□□□");
+		gotoxyPrint(7, 15, "               Made By 마이구미   ");
+
+		switch (_getch()){
+		case '1':
+			gameStart();
+			break;
+		case '2':
+			Config();
+			break;
+		case '3':
+			Ranking();
+			break;
+		case '4':
+			Help();
+			break;
+		}
+	}
+}
+
+void DrawScreen() //벽을 그린다
+{
+	int x, y;
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15); //글자색을 바꿈
+
+	for (x = 0; x<BW + 2; x++) {
+		for (y = 0; y<BH + 2; y++) {
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+			//if (board[x][y].tile == WALL)
+				gotoxyPrint(BX + x * 2, BY + y, arTile[board[x][y].tile]);
+		}
+	}
+
+	if (gameState == MULTI){
+		for (x = 0; x < BW + 2; x++) {
+			for (y = 0; y < BH + 2; y++) {
+				SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+				//if (board2[x][y].tile == WALL)
+					gotoxyPrint((BX + x * 2) + 45, BY + y, arTile[board2[x][y].tile]);
+			}
+		}
+	}
+}
+
+void DrawBoard() //보드판을 그린다
+{
+	int x, y;
+
+	for (x = 1; x<BW + 1; x++) {
+		for (y = 1; y<BH + 1; y++) {
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), board[x][y].color);
+			gotoxyPrint(BX + x * 2, BY + y, arTile[board[x][y].tile]);
+		}
+	}
+	
+}
+
+void DrawBoard2()
+{
+	int x, y;
+	for (x = 1; x<BW + 1; x++) {
+		for (y = 1; y<BH + 1; y++) {
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), board2[x][y].color);
+			gotoxyPrint((BX + x * 2) + 45, BY + y, arTile[board2[x][y].tile]);
+		}
+	}
+}
+
+BOOL ProcessKey(BOOL type) //FALSE: player1, TRUE: player2
+{
+	Sleep(10);
+	int ch, trot;
+
+	
+
+	if (!type){ //Player1
+		if (GetAsyncKeyState(VK_SHIFT)){
+			system("cls");
+			Sleep(300);
+			DrawScreen();
+			Sleep(300);
+			DrawBoard();
+			Sleep(300);
+			PrintHold(TRUE);
+			Sleep(300);
+			PrintBrick(TRUE);
+			Sleep(300);
+			PrintnBrick(TRUE);
+			Sleep(300);
+			if (gameState == MULTI){
+				DrawBoard2();
+				Sleep(300);
+				PrintHold2(TRUE);
+				Sleep(300);
+				PrintnBrick2(TRUE);
+				Sleep(300);
+				PrintBrick2(TRUE);
+				Sleep(300);
+			}
+		}
+
+		if (GetAsyncKeyState(VK_UP) & 0x0001) { //UP키가 눌려져있는 상태일때
+			trot = (rot == 3 ? 0 : rot + 1); //rot가 3이면 0, 아니면 +1값을 trot에 대입
+			if (GetAround(nx, ny, brick, trot) == EMPTY) { //회전한 블록이 안부딪히는지 확인
+				PrintBrick(FALSE);
+				rot = trot;
+				PrintBrick(TRUE); //블록출력
+			}
+		}
+		if (GetAsyncKeyState(VK_DOWN) & 0x0001) {
+			if (MoveDown()) { //블록을 밑으로 내린다
+				return TRUE; //완전히 내려갔으면 true 반환
+			}
+		}
+		if (GetAsyncKeyState(VK_LEFT) & 0x0001) {
+			if (GetAround(nx - 1, ny, brick, rot) == EMPTY) { //왼쪽으로 이동한 블록이 안부딪히는지 확인
+				PrintBrick(FALSE);
+				nx--;
+				PrintBrick(TRUE);
+			}
+		}
+		if (GetAsyncKeyState(VK_RIGHT) & 0x0001){
+			if (GetAround(nx + 1, ny, brick, rot) == EMPTY) { //오른쪽으로 이동한 블록이 안부딪히는지 확인
+				PrintBrick(FALSE);
+				nx++;
+				PrintBrick(TRUE);
+			}
+		}
+		if (GetAsyncKeyState(VK_SPACE) & 0x0001){ 
+			while (MoveDown() == FALSE) { ; } //블록을 끝까지 내린다
+			return TRUE;
+		}
+		if (GetAsyncKeyState(VK_TAB) & 0x0001){
+			if (GetAround(nx, ny, hold, 0) == EMPTY) { //홀드한 블록이 벽과 부딪히는지 확인
+				PrintHold(FALSE); //홀드된 블록 출력
+				PrintBrick(FALSE);
+				if (hold == -1){ //홀드한 블록이 없으면
+					hold = brick;
+					brick = nbrick;
+					rot = 0;
+					nbrick = random(sizeof(Shape) / sizeof(Shape[0]));
+
+					PrintnBrick(TRUE);
+
+					nx = BW / 2;
+					PrintBrick(TRUE);
+					//다음블록을 출력하고 홀드
+				}
+				else{
+					int temp = brick;
+					brick = hold;
+					hold = temp;
+					rot = 0;
+					PrintBrick(TRUE);
+					//홀드한 블록과 현재블록을 바꿈
+				}
+
+				PrintHold(TRUE);
+			}
+		}
+	}
+
+	else{ //Player2일때, 하는일은 위와 같음
+		if (GetAsyncKeyState('W') & 0x0001) {
+			trot = (rot2 == 3 ? 0 : rot2 + 1);
+			if (GetAround(nx2, ny2, brick2, trot) == EMPTY) {
+				PrintBrick2(FALSE);
+				rot2 = trot;
+				PrintBrick2(TRUE);
+			}
+		}
+		if (GetAsyncKeyState('S') & 0x0001) {
+			if (MoveDown2()) {
+				return TRUE;
+			}
+		}
+		if (GetAsyncKeyState('A') & 0x0001) {
+			if (GetAround2(nx2 - 1, ny2, brick2, rot2) == EMPTY) {
+				PrintBrick2(FALSE);
+				nx2--;
+				PrintBrick2(TRUE);
+			}
+		}
+		if (GetAsyncKeyState('D') & 0x0001){
+			if (GetAround2(nx2 + 1, ny2, brick2, rot2) == EMPTY) {
+				PrintBrick2(FALSE);
+				nx2++;
+				PrintBrick2(TRUE);
+			}
+		}
+		if (GetAsyncKeyState('X') & 0x0001){
+			while (MoveDown2() == FALSE) { ; }
+			return TRUE;
+		}
+		if (GetAsyncKeyState('Q') & 0x0001){
+			if (GetAround(nx2, ny2, hold2, 0) == EMPTY) {
+				PrintHold2(FALSE);
+				PrintBrick2(FALSE);
+				if (hold2 == -1){
+					hold2 = brick2;
+					brick2 = nbrick2;
+					nbrick2 = random(sizeof(Shape) / sizeof(Shape[0]));
+					rot2 = 0;
+
+					PrintnBrick2(TRUE);
+
+					nx2 = BW / 2;
+					ny2 = 3;
+					PrintBrick2(TRUE);
+				}
+				else{
+					rot2 = 0;
+					int temp = brick2;
+					brick2 = hold2;
+					hold2 = temp;
+					PrintBrick2(TRUE);
+				}
+
+				PrintHold2(TRUE);
+			}
+		}
+	}
+
+	
+	return FALSE;
+}
+
+void PrintHold(BOOL Show)
+{
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+	gotoxyPrint(37, 5, "□□□□□□");
+	gotoxyPrint(37, 6, "□        □");
+	gotoxyPrint(37, 7, "□        □");
+	gotoxyPrint(37, 8, "□        □");
+	gotoxyPrint(37, 9, "□□□□□□");
+
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+	if (hold != -1){
+		int i;
+
+		for (i = 0; i < 4; i++) {
+			gotoxyPrint(41 + (Shape[hold][0][i].x) * 2, BY + Shape[hold][0][i].y + 6, arTile[Show ? BRICK : EMPTY]);
+			//블록 출력
+		}
+	}
+}
+
+void PrintHold2(BOOL Show)
+{
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+	gotoxyPrint(85, 5, "□□□□□□");
+	gotoxyPrint(85, 6, "□        □");
+	gotoxyPrint(85, 7, "□        □");
+	gotoxyPrint(85, 8, "□        □");
+	gotoxyPrint(85, 9, "□□□□□□");
+
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+	if (hold2 != -1){
+		int i;
+
+		for (i = 0; i < 4; i++) {
+			gotoxyPrint(44 + (Shape[hold2][0][i].x) * 2 + 45, BY + Shape[hold2][0][i].y + 7, arTile[Show ? BRICK : EMPTY]);
+		}
+	}
+}
+
+void PrintBrick(BOOL Show)
+{
+	int i;
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), brick + 4);
+
+	for (i = 0; i<4; i++) {
+		gotoxyPrint(BX + (Shape[brick][rot][i].x + nx) * 2, BY + Shape[brick][rot][i].y + ny, arTile[Show ? BRICK : EMPTY]);
+	}
+
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+	char s[25];
+	if (gameState == SINGLE) sprintf_s(s, "점수: %d점", score);
+	else sprintf_s(s, "시간: %d초", timer);
+	gotoxyPrint(37, 13, s);
+}
+
+void PrintBrick2(BOOL Show)
+{
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), brick2 + 4);
+
+	for (int i = 0; i<4; i++) {
+		gotoxyPrint(BX + (Shape[brick2][rot2][i].x + nx2) * 2 + 45, BY + Shape[brick2][rot2][i].y + ny2, arTile[Show ? BRICK : EMPTY]);
+	}
+}
+
+void PrintnBrick(BOOL Show)
+{
+	int i;
+
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+	gotoxyPrint(37, 19, "□□□□□□");
+	gotoxyPrint(37, 20, "□        □");
+	gotoxyPrint(37, 21, "□        □");
+	gotoxyPrint(37, 22, "□        □");
+	gotoxyPrint(37, 23, "□□□□□□");
+
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+	for (i = 0; i<4; i++) {
+		gotoxyPrint(41 + (Shape[nbrick][0][i].x) * 2, BY + Shape[nbrick][0][i].y + 20, arTile[Show ? BRICK : EMPTY]);
+	}
+}
+
+void PrintnBrick2(BOOL Show)
+{
+	int i;
+
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+	gotoxyPrint(85, 19, "□□□□□□");
+	gotoxyPrint(85, 20, "□        □");
+	gotoxyPrint(85, 21, "□        □");
+	gotoxyPrint(85, 22, "□        □");
+	gotoxyPrint(85, 23, "□□□□□□");
+
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+	for (i = 0; i<4; i++) {
+		gotoxyPrint(44 + (Shape[nbrick2][0][i].x) * 2 + 45, BY + Shape[nbrick2][0][i].y + 20, arTile[Show ? BRICK : EMPTY]);
+	}
+}
+
+int GetAround(int x, int y, int b, int r)
+{
+	int i, k = EMPTY;
+
+	for (i = 0; i<4; i++) {
+		k = max(k, board[x + Shape[b][r][i].x][y + Shape[b][r][i].y].tile);
+		//이동하려는 블록들이 각각 빈공간인지 확인
+	}
+	return k;
+}
+
+int GetAround2(int x, int y, int b, int r)
+{
+	int i, k = EMPTY;
+
+	for (i = 0; i<4; i++) {
+		k = max(k, board2[x + Shape[b][r][i].x][y + Shape[b][r][i].y].tile);
+	}
+	return k;
+}
+
+BOOL MoveDown()
+{
+	if (GetAround(nx, ny + 1, brick, rot) != EMPTY) { //완전히 내려가면
+		TestFull(); //줄이 채워졌는지 확인
+		return TRUE;
+	}
+	PrintBrick(FALSE);
+	ny++;
+	PrintBrick(TRUE);
+	return FALSE;
+}
+
+BOOL MoveDown2()
+{
+	if (GetAround2(nx2, ny2 + 1, brick2, rot2) != EMPTY) {
+		TestFull2();
+		return TRUE;
+	}
+	PrintBrick2(FALSE);
+	ny2++;
+	PrintBrick2(TRUE);
+	return FALSE;
+}
+
+void TestFull2()
+{
+	BOOL isSound = FALSE;
+	
+	int i, x, y, ty;
+
+	for (i = 0; i<4; i++) {
+		board2[nx2 + Shape[brick2][rot2][i].x][ny2 + Shape[brick2][rot2][i].y].color = brick2 + 4;
+		board2[nx2 + Shape[brick2][rot2][i].x][ny2 + Shape[brick2][rot2][i].y].tile = BRICK;
+	}
+	DrawBoard2();
+
+	for (y = 1; y<BH + 1; y++) {
+		for (x = 1; x<BW + 1; x++) {
+			if (board2[x][y].tile != BRICK){ //채워진 줄이 있는지 확인
+				break;
+			}
+		}
+		if (x == BW + 1) { //채워진 줄이라면
+			bricknum2++; 
+			if (bricknum2 % 10 == 0 && nFrame>1)  nFrame--; //10번 지울때마다 난이도 상승
+			if(soundPlay) _system->playSound(soundTestfull, NULL, FALSE, &chTestfull); //줄이 지워질때 효과음 재생
+			isSound = TRUE; //지워지는 효과음을 재생했다고 알림
+			for (ty = y; ty>1; ty--) {
+				for (x = 1; x<BW + 1; x++) {
+					board2[x][ty] = board2[x][ty - 1]; //한줄씩 내려서 줄을 지우개함
+				}
+			}
+
+			Board temp[BW + 2][BH + 2]; //임시변수
+
+			for (x = 0; x<BW + 2; x++) {
+				for (y = 0; y<BH + 2; y++) {
+					temp[x][y].tile = (y == 0 || y == BH + 1 || x == 0 || x == BW + 1) ? WALL : EMPTY;
+				}
+			}
+			//초기화
+
+			for (ty = 0; ty<y - 1; ty++) {
+				for (x = 1; x<BW + 1; x++) {
+					temp[x][ty - 1] = board[x][ty];
+				}
+			}
+			//임시변수에 상대편의 보드를 한칸 밀리게 대입
+
+			for (ty = 0; ty<y - 1; ty++) {
+				for (x = 1; x<BW + 1; x++) {
+					board[x][ty] = temp[x][ty];
+				}
+			}
+			//상대편의 보드에 대입
+			 
+			int del = random(BW) + 1;
+			for (x = 1; x <= BW + 3; x++) {
+				board[x][BH].color = 15;
+				if (x == del){
+					board[x][BH].tile = EMPTY;
+					continue;
+				}
+				board[x][BH].tile = BRICK;
+			}
+			//마지막 줄에서 한칸을 뺀 나머지를 블록으로 채움
+
+			DrawBoard2();
+			Sleep(300);
+			DrawBoard();
+			y = 0; //보드가 바뀌었으므로 다시 검사하게함
+		}
+	}
+	if(!isSound && soundPlay) _system->playSound(soundMovedown, NULL, FALSE, &chMovedown); //내려갔을때 효과음 재생
+}
+
+void TestFull()
+{
+	BOOL isSound = FALSE;
+	int i, x, y, ty;
+
+	for (i = 0; i<4; i++) {
+		board[nx + Shape[brick][rot][i].x][ny + Shape[brick][rot][i].y].color = brick + 4;
+		board[nx + Shape[brick][rot][i].x][ny + Shape[brick][rot][i].y].tile = BRICK;
+	}
+	
+
+	for (y = 1; y<BH + 1; y++) {
+		for (x = 1; x<BW + 1; x++) {
+			if (board[x][y].tile != BRICK){
+				break;
+			}
+		}
+		if (x == BW + 1) {
+			bricknum++;
+			score += 10;
+			if (bricknum % 10 == 0 && nFrame>1)  nFrame--;
+			isSound = TRUE;
+			if(soundPlay) _system->playSound(soundTestfull, NULL, FALSE, &chTestfull);
+			for (ty = y; ty>1; ty--) {
+				for (x = 1; x<BW + 1; x++) {
+					board[x][ty] = board[x][ty - 1];
+				 }
+	 		 }
+			DrawBoard();
+
+			if (gameState == MULTI){ //1인용 모드일때는 실행하지 않음
+				Board temp[BW + 2][BH + 2];
+
+				for (x = 0; x < BW + 2; x++) {
+					for (y = 0; y < BH + 2; y++) {
+						temp[x][y].tile = (y == 0 || y == BH + 1 || x == 0 || x == BW + 1) ? WALL : EMPTY;
+					}
+				}
+
+				for (ty = 0; ty < y - 1; ty++) {
+					for (x = 1; x < BW + 1; x++) {
+						temp[x][ty - 1] = board2[x][ty];
+					}
+				}
+
+				for (ty = 0; ty < y - 1; ty++) {
+					for (x = 1; x < BW + 1; x++) {
+						board2[x][ty] = temp[x][ty];
+					}
+				}
+
+
+				int del = random(BW) + 1;
+				for (x = 1; x <= BW + 3; x++) {
+					board2[x][BH].color = 15;
+					if (x == del){
+						board2[x][BH].tile = EMPTY;
+						continue;
+					}
+					board2[x][BH].tile = BRICK;
+				}
+				DrawBoard2();
+				y = 0;
+			}
+		}
+	}
+	if(!isSound && soundPlay) _system->playSound(soundMovedown, NULL, FALSE, &chMovedown);
+	Sleep(300);
+	DrawBoard();
+}
