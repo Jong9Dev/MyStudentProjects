@@ -1,0 +1,48 @@
+card_history.csv 파일 로딩 후
+card = pd.read_csv("card_history.csv",encoding='cp949')
+
+1) NUM컬럼의 값을 index(row이름)로 설정
+card = card.set_index('NUM')
+
+2) 모든 컬럼 숫자 형태 변환
+f1 = lambda x : int(x.replace(',',''))
+card = card.applymap(f1)
+
+3) 의복 지출이 큰 순서대로 정렬
+card.sort_values(by='의복', ascending=False)
+
+4) 각 일수별로 각 소비형태가 차지하는 비율 출력
+
+	식료품	의복	외식비	책값	온라인소액결제	의료비
+1	8.63	63.61	3.83	12.9	 2.49	          8.54  총100%
+
+f2 = lambda x : round(x / x.sum() * 100,2)
+card.apply(f2,1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+1
+card = card.set_index('NUM')
+
+
+3
+f1 = lambda x : int(x.replace(',' , ''))
+card = card.applymap(f1)
+
+
+4
+card.sort_values(y='의복', ascending=False)
+
+
+f2 = lambda x : round(x / x.sum() * 100,2)
+card.apply(f2,axis=1)

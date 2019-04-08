@@ -1,0 +1,7 @@
+1. 어떤 리스트에서 특정 패턴을 갖는 원소를 모두 출력하려고 한다.
+예를들어 ['isnan','nan','trunc','nanf','sum'] 의 리스트에서 
+nan패턴이 포함된 원소를 찾아 ['isnan', 'nan', 'nanf'] 리스트로 출력
+my_func(list,pattern) 형식으로 list에서 pattern을 찾는 사용자 정의 함수를 생성
+
+2. 로또 번호 생성 프로그램(6개의 중복되지 않는 숫자 추출)
+random.randrange(1,46)  : 1~45까지의 숫자 랜덤 추출

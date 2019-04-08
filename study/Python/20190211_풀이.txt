@@ -1,0 +1,36 @@
+1. disease.txt 파일을 불러들여 다음을 수행
+disease = pd.read_csv("disease.txt", encoding='cp949', sep='\s+')
+
+1) 대장균이 가장 많이 발병한 달을 출력
+disease.index = disease['월별']
+disease['대장균'].idxmax()
+
+2) 데이터를 A형간염이 많은 순으로 정렬
+f1 = lambda x : float(str(x).replace(',',''))
+disease = disease.applymap(f1).astype('int')
+disease.sort_values(by='A형간염', ascending = False)
+
+3) 콜레라 기준으로 순위 출력
+disease.rank()['콜레라']
+
+4) 각 질병 별 발병횟수의 총 합을 출력
+disease.sum(0)  # pandas에서의 sum 메서드 호출(na 무시)
+disease.apply(sum,0)  # 기본 sum 함수 호출(na 무시 못함)
+
+
+2. student.csv 파일을 불러들여
+1) 각 학년별 평균키가 출력되도록 사용자 정의함수 생성, 적용, 새로운 컬럼 생성
+f2 = lambda x : student.loc[student.GRADE == x,'HEIGHT'].mean()
+student['mean_heignt'] = student.GRADE.map(f1)
+
+2) 성별컬럼 생성
+f3 = lambda x : np.where(str(x)[6] == '1' , '남자','여자')
+df_std['성별'] = df_std['JUMIN'].map(f3)
+
+3) 지역번호 컬럼 생성
+f4 = lambda x : x.split(')')[0]
+df_std['area'] = df_std.TEL.map(f4)
+
+4) id에 'a'가 포함된 학생의 정보 출력
+f5 = lambda x : 'a' in x
+df_std[df_std.ID.map(f6)]

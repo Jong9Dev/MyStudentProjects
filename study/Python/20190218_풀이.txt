@@ -1,0 +1,20 @@
+1. employment 데이터를 불러오고
+emp = pd.read_csv("employment.csv", encoding='cp949', na_values='-', index_col=0)
+
+# 멀티 인덱스 설정
+aa = emp.columns.str[:4]
+bb = emp.iloc[0].str.split(' ').str.get(0)
+emp.columns = [aa, bb]
+
+# 숫자 치환
+f1 = lambda x : str(x).replace(',','')
+emp = emp.applymap(f1).astype('float')
+
+1) 각 근로자별로 월급여액의 년도별 증감 추이를 그래프로 나타내어라
+data1 = emp.xs('월급여액', axis=1, level=1).T
+data1.index = data1.index.astype('int')
+data1.plot()
+
+2) 각 근로자별 초과근로시간의 평균을 구하고 막대 그래프로 비교할 수 있도록 나타내어라.
+data2 = emp.xs('초과근로시간', axis=1, level=1)
+data2.dropna().mean(1).plot(kind='bar')

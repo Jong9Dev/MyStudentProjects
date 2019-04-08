@@ -1,0 +1,15 @@
+1. sales 데이터를 불러와서 
+sales=pd.read_csv("sales.csv")
+
+1) 각 날짜별 판매량의 합계를 구하여라.
+sales.pivot('date','code','qty').sum(1)
+
+2) 각 code별 판매량의 합계를 구하여라.
+sales.pivot('date','code','qty').sum()
+
+3) product 데이터를 이용하여 각 날짜별, 상품별 매출의 합계를 구하여라
+product=pd.read_csv("product.csv")
+total=pd.merge(sales,product)
+total['sales'] = total.qty * total.price
+total.pivot('date','product','sales').sum()
+total.pivot('date','product','sales').sum(1)

@@ -1,0 +1,23 @@
+1. 회문판별 함수 작성(회문 : 앞으로 읽으나 뒤로 읽으나 같은 문자)
+f('lolol') => 회문입니다
+f('a') => 널 값 또는 한자리 문자는 회문판별이 불가합니다
+f('abc') => 회문이 아닙니다
+
+2. f_split(list,sep,ord) 함수를 만들어
+리스트에서 분리구분기호(sep)로 분리된 "ord" 번째 값 출력
+l1=['a/b/c','aa/bb/cc']
+l2=['abc@naver.com','aaa@daum.net']
+
+f_split(l1,'/',0) => ['a','aa']
+f_split(l1,'/',1) => ['b','bb']
+f_split(l2,'@',0) => ['abc','aaa']
+
+
+
+[ 시각화 시험범위  ]
+1. plot 차트 주 옵션(xlim, ylim, xlab, lty, col, ann, axes...)
+2. barplot 주 옵션(beside, matrix형식...)
+3. axis와 title 함수를 사용한 축 설정 및 제목 설정 
+4. pie 차트 label 설정 방법
+5. 범례 설정
+6. 실 데이터를 사용한 그래프 그리기 빈칸 채우기

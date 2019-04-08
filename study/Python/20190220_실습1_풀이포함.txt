@@ -1,0 +1,22 @@
+1. delivery.csv 파일을 읽고
+1) 일자별 총 통화건수와 전일대비 증가량을 구하여라
+deli = pd.read_csv('delivery.csv', encoding='cp949')
+
+s1 = deli.groupby('일자')['통화건수'].sum()
+s2 = s1.shift(1)
+(s1 - s2) / s2
+
+2) 요일별로 각 업종별 통화건수를 확인하고 막대그래프로 표현하여라
+deli['일자'] =  pd.to_datetime(deli['일자'], format= '%Y%m%d')
+f1 = lambda x: x.strftime('%A')
+deli['요일'] = deli['일자'].map(f1)
+
+data1 = deli.groupby(['요일','업종'])['통화건수'].sum().unstack()
+data1.plot(kind='bar')
+
+3) 평일과 주말(금,토,일)로 그룹을 나누어서 각 그룹별 시군구별 통화건수를 분석하여라
+f2 = lambda x: x.strftime('%w')
+deli['일자'].map(f2)
+deli['일자'].map(f2).astype('int').map(yoil )
+
+deli.groupby([deli['일자'].map(f2).astype('int').map(d1) , '시군구'])['통화건수'].sum.unstack()

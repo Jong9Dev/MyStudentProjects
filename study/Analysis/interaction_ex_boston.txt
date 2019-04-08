@@ -1,0 +1,40 @@
+보스턴 주택 가격 데이터 셋을 이용한 특성의 확장 및 선택
+1. 데이터 로딩
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+
+from sklearn.datasets import load_boston
+boston = load_boston()
+
+2. train, test 데이터 셋 분리
+X_train, X_test, y_train, y_test = train_test_split(boston.data, boston.target, random_state=0)
+
+3. scale 조정
+scaler = MinMaxScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+4. interaction 추가
+poly = PolynomialFeatures(degree=2).fit(X_train_scaled)
+poly.get_feature_names()                            # 추가된 컬럼 형태 확인
+ 
+# 컬럼이름 출력 방법
+boston_df = pd.DataFrame(boston.data, columns=boston.feature_names)
+X_train, X_test, y_train, y_test = train_test_split(boston_df , boston.target, random_state=0)
+poly = PolynomialFeatures(degree=2).fit(X_train)
+poly.get_feature_names(X_train.columns)         # 컬럼이름 확인
+poly_columns = poly.get_feature_names(X_train.columns)
+
+# interaction 추가 된 데이터 셋 
+X_train_poly = DataFrame(poly.transform(X_train), columns=poly_columns)
+X_test_poly = DataFrame(poly.transform(X_test), columns=poly_columns)
+
+5. 랜덤포레스트 적용
+from sklearn.ensemble import RandomForestRegressor
+rf_m = RandomForestRegressor(n_estimators=100, random_state=0)
+rf_m.fit(X_train_poly, y_train)
+
+6.  특성 중요도 출력
+feature_importance = Series(rf_m.feature_importances_, index = poly_columns )
+feature_importance.sort_values(ascending=False)

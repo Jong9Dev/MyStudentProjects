@@ -1,0 +1,29 @@
+1. 부동산_매매지수.csv 파일을 읽고(engine='python' 옵션필)
+data=pd.read_csv('부동산_매매지수.csv',engine='python',encoding='cp949',skiprows=[0,2])
+data = data.dropna(how='all')
+
+1) 2008년 4월 7일 부터 관찰된 매 주 각 구별 매매지수 기록이라고 할때 날짜컬럼을 추가
+data.index=pd.date_range('2008/04/07', periods=513, freq='7d')
+
+2) 2017년 기준 작년 대비 상승률 상위 10개 구를 상승률과 함께 출력
+total=data.resample('Y',how='mean')
+(total - total.shift(1)) / total.shift(1) * 100)['2017'].stack().sort_values(ascending=False)[:10]
+
+2. card_history.csv파일은
+data=pd.read_csv("card_history.csv", encoding='cp949')
+data.index=pd.date_range('01/01/2018',periods=30, freq='W-SUN')
+data = data.drop('NUM',axis=1)
+data=data.applymap(lambda x : int(x.replace(',','')))
+
+1) 월별 각 항목의 지출 비율을 사용자 정의함수를 생성하여 출력
+total=data.resample('M',how='sum')
+f1 = lambda x : (x / x.sum()) * 100
+total.apply(f1,axis=1)
+
+2) 월별 지출 비율이 가장 높은 항목을 지출 비율과 함께 출력
+dd=total.apply(f1,axis=1).stack()
+top = lambda x : x.sort_values(ascending=False)[0:1]
+dd.groupby(level=0,group_keys=False).apply(top)
+
+3) 일별 데이터로 변경하고, 각 일별 지출내용은 하루 평균 지출값으로 나타낸다
+data.resample('D',fill_method='ffill') / 7

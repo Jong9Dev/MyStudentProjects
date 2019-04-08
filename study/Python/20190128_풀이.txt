@@ -1,0 +1,38 @@
+1.
+
+def f_pal(word) :
+  wlen=len(word)
+  wcnt=wlen//2  # 반복횟수 설정
+
+  if wlen >= 2 :
+         for a in range(0,wcnt) :
+            if word[a] == word[-(a+1)] :
+               continue
+            else :
+               print("회문이 아닙니다")
+               exit(0)   # 강제 종료(종료코드 : 0)
+         print("회문입니다")
+  else :
+         print("널값 또는 한자리의 문자는 회문이 될 수 없습니다")
+
+
+2. 
+>>> def f_split(list,sep=' ',ord=0) :
+	ll=[]
+	for i in list :
+		ll.append(i.split(sep)[0])
+	return(ll)
+
+>>> l1=['a/b/c','d/e/f']
+>>> f_split(l1,'/',0)
+['a', 'd']
+
+>>> f_split2 = lambda x, sep=' ', ord=0 : x.split(sep)[ord]
+>>> list(map(f_split2,l1,['/','/'],[0,0]))   # map 전달시 인자의 개수 맞춰줘야함
+['a', 'd']
+
+
+
+
+
+

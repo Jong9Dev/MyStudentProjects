@@ -1,0 +1,16 @@
+1. subway2.csv 파일을 읽고,
+1) top(df,col,n) 함수 생성
+top = lambda data, col, n=5 : data.sort_values(by=col, ascending=False)[:n]
+top(sub,'05~06')
+
+2) 역별 승차가 가장 많은 시간대 5개 출력(위 함수 적용)
+2-1) 컬럼을 사용한 그룹핑
+sub_1 = sub.set_index(['전체','구분'])
+sub_2 = sub_1.xs('승차',level=1)
+sub_3 = sub_2.stack().reset_index()
+sub_3.columns = ['역','시간','승차']
+sub_3.groupby('역', group_keys=False).apply(top,'승차')
+
+2-2) 레벨을 사용한 그룹핑
+df1 = DataFrame(sub_2.stack(), columns =['승차'])
+df1.groupby(level=0,group_keys=False).apply(top,'승차')

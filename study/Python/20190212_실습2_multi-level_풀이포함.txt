@@ -1,0 +1,26 @@
+multi_index_ex1.csv 파일을 읽고 다음을 수행
+df1 = pd.read_csv("multi_index_ex1.csv",encoding='cp949')
+
+1) 각 인덱스와 컬럼을 multi-index를 갖도록 설정
+df1 = df1.set_index(['지역','지역.1'])
+df1.index.names = ['품목','세부품목']
+
+df1.columns = [df1.columns.map(lambda x : x[:2]) , df1.iloc[0] ]
+df1 = df1.iloc[1:]
+df1.columns.names = ['지역','지점']
+
+2) 컴퓨터의 서울지역 판매량 출력
+df1 = df1.astype('int')
+df1.loc['컴퓨터','서울']
+
+3) 서울지역의 컴퓨터의 각 세부항목별 판매량의 합계 출력
+df1.loc['컴퓨터','서울'].apply(sum,1)
+
+4) 각 지역의 A지점의 TV 판매량 출력
+df1.xs('A',level='지점', axis=1).xs('TV',level=1)
+
+5) 각 지역의 C지점의 모바일의 각 세부항목별 판매량 평균 출력
+df1.xs('C',level='지점', axis=1).xs('모바일').mean(1)
+
+6) 서울지역의 A지점의 노트북 판매량 출력
+df1.xs('노트북',level=1).loc[:,('서울','A')]

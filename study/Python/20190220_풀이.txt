@@ -1,0 +1,43 @@
+1. 병원현황.csv 데이터 
+df1 = pd.read_csv('병원현황.csv', encoding='cp949', engine='python', skiprows=1)
+
+# 불필요한 컬럼 제거
+df2 = df1.drop(['항목','단위'],axis=1).set_index(['시군구명칭','표시과목'])
+
+# 멀티 컬럼 생성
+c1 = df2.columns.str.split('. ').str.get(0)
+c2 = df2.columns.str.split('. ').str.get(1)
+df2.columns = [c1,c2]
+
+1) 각 년도별 구별 병원의 수 출력
+1-1) '계' 행 선택 후 출력
+df_total = df2.xs('계',level=1)
+df_total.groupby(level=0, axis=1).sum()
+
+1-2) '계' 제거 후 출력
+df_rm = df2.drop('계',level=1)
+df_rm.groupby(level=0, axis=1).sum().groupby(level=0).sum()
+
+2) 성형외과의 년도별 증가 추이
+data = df_rm.groupby(level=0, axis=1).sum()
+
+plot1 = data.xs('성형외과', level=1).sum(0)
+plot1.index = plot1.index.astype('int')
+
+plt.xticks(plot1.index)
+
+3) 강남구의 년도별 증가 추이
+plot2 = data.xs('강남구', level=0).sum()
+plot2.index = plot2.index.astype('int')
+plot2.plot()
+plt.xticks(plot2.index)
+
+4) 2013년 기준, 각 병원의 구별 점유율을 출력
+(예를들면 서울 전체의 성형외과중 60%가 강남구에 분포, 30%가 종로구에 분포 ...)
+data1 = data.xs('2013', axis=1).unstack()
+f2 = lambda x : round(x / x.sum() * 100,2)
+data1.apply(f2)
+
+5) 년도별 각 병원의 총 건수를 병원별로 비교할수 있도록 막대그래프 표현
+data3 = data.groupby(level=1).sum()
+data3.T.plot(kind='bar')

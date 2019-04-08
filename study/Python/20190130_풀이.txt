@@ -1,0 +1,63 @@
+1. 외부 텍스트파일을 불러 리스트 형식으로 저장,
+( 분리구분기호와 포맷 전달 가능하게 생성)
+def read_txt(fname, sep, fmt) :
+  m1 = open(fname, 'r')
+  vstr = m1.readlines()
+  l2=[]
+  for a in vstr :
+    ll = a.strip().split(sep)
+    l1=[]
+    for b in ll :
+      l1.append(fmt(b))
+    l2.append(l1) 
+  return(l2)
+  m1.close()
+
+
+2. 내부 리스트를(차원 상관없이) 사용자 지정 분리구분기호와 함께 외부 텍스트 파일로 저장
+
+def write_txt(list, fname, sep) :
+  m1 = open(fname, 'w')
+  vstr = ''
+  for a in list :
+    for b in a : 
+       vstr = vstr + str(b) + sep
+    vstr = vstr.rstrip(sep)
+    vstr = vstr + '\n'
+  m1.writelines(vstr)
+  m1.close()
+
+def write_txt(list,filename,sep=' ') :
+    m1 = open(filename, 'w')
+    ss = ''
+    cnt=0
+    for a in list :
+        if 'list' in str(type(a)) :
+            cnt = cnt + 1
+            for b in a :
+                ss = ss + str(b) + sep    
+            ss = ss.rstrip(sep)
+        else :
+            ss = ss + str(a) + sep
+        ss = ss + '\n'
+    if cnt == 0 :
+        ss = ss.replace('\n','').rstrip(sep)
+    m1.writelines(ss)
+    m1.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  m1.close()

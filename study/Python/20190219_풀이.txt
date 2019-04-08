@@ -1,0 +1,22 @@
+kimchi_test파일을 불러들이고 다음의 문제를 풀어보세요
+kimchi = pd.read_csv('kimchi_test.csv', encoding='cp949')
+
+1. 각 년도별 제품별 판매량과 판매금액의 평균
+kimchi.groupby(['판매년도','제품'])['수량','판매금액'].mean()
+
+2. 각 년도별 제품별 판매처별 판매량과 판매금액 평균
+kimchi.groupby(['판매년도','제품', '판매처'])['수량','판매금액'].mean()
+
+3. 각 제품별 판매수량이 0~ 10000, 10000~20000, 20000~ 의 판매량을 기록한 월이 몇 회인지 확인
+l1 = [0,10000,20000, 100000]
+aa = pd.cut(kimchi['수량'], l1, right = True)
+aa.groupby([aa,data['제품']]).count().unstack()
+
+# 4. 각 김치별로 가장 많이 팔리는 월과 해당 월의 판매량을 김치이름과 함께 출력
+data1 = kimchi.groupby(['제품','판매월'] )['수량'].sum()
+data1[data1.groupby(level=0).idxmax()]                                              
+
+# 5. 각 월별로 김치의 판매량을 비교할 수 있도록 막대그래프로 표현
+data2 = data1.unstack(level=0)
+data2.plot(kind='bar')
+plt.xticks(rotation=0, fontsize='small')

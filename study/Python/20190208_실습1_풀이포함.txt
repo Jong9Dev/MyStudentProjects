@@ -1,0 +1,33 @@
+disease.txt 파일을 읽고
+1. 각 월별 발병건수의 총합
+2. 각 질병별 발병건수의 평균
+3. 모두 4자리로 통일
+4. index 이름에서 "월" 제거
+
+========================================
+[ 데이터 로딩 및 변환 ]
+df1 = DataFrame(np.loadtxt('disease.txt', dtype='str'))
+df1.columns = df1.iloc[0]
+df1 = df1.drop(0)
+df1.index = df1.iloc[:,0]
+df1 = df1.drop('월별', axis=1)
+
+f1 = lambda x : x.replace('NA','0')
+df1 = df1.applymap(f1)
+
+f2 = lambda x : int(x.replace(',',''))
+df1 = df1.applymap(f2)
+
+1.
+df1.apply(sum,1)
+
+2. 
+df1.apply(np.mean)
+
+3. 
+f4 = lambda x : "%04d" % x
+df1.applymap(f4)
+
+4.
+f5 = lambda x : x.replace('월','')
+df1.index = df1.index.map(f5)

@@ -1,0 +1,26 @@
+1. ncs학원검색.txt 파일을 읽고 
+1) 아래처럼 데이터 프레임 작성
+
+name 	   address 	tel 		start_date	             end_date
+아이티윌	   서울 강남구	02-6255-8002	2018-10-12  	2019-03-27
+
+# 파일 불러오기
+m1 = open('ncs학원검색.txt', 'r')
+data = m1.readlines()
+m1.close()
+
+df1 = DataFrame(data, columns=['text'])
+
+# 패턴 및 그룹화
+pattern = re.compile('(.+ )\((.+ )\u260E( [0-9-]+ )\) .+ :(.+)~(.+)')
+df1['text'].str.findall(pattern)
+df2 = df1['text'].str.findall(pattern)
+result = df2.str.get(0).dropna()
+
+a1 = result.str.get(0).str.strip()
+a2 = result.str.get(1).str.strip()
+a3 = result.str.get(2).str.strip()
+a4 = result.str.get(3).str.strip()
+a5 = result.str.get(4).str.strip()
+
+data = DataFrame({'name':a1, 'addr':a2, 'tel':a3, 'start':a4, 'end':a5})

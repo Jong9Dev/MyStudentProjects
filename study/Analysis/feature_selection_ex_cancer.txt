@@ -1,0 +1,70 @@
+# 유방암
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.model_selection import train_test_split
+from sklearn.feature_selection import SelectPercentile
+from sklearn.feature_selection import SelectFromModel
+from sklearn import datasets
+
+cancer = load_breast_cancer()
+X = cancer .data
+y = cancer .target
+
+cancer_df = pd.DataFrame(X,columns=cancer.feature_names)
+X_train, X_test, y_train, y_test = train_test_split(cancer_df , y, random_state=0)
+
+poly = PolynomialFeatures(degree=2).fit(X_train)
+poly.get_feature_names()
+poly.get_feature_names(X_train.columns) # 컬럼이름 확인
+poly_columns = poly.get_feature_names(X_train.columns)
+
+# 특성 확장 데이터 셋 변경
+X_train_poly = DataFrame(poly.transform(X_train), columns=poly_columns)
+X_test_poly = DataFrame(poly.transform(X_test), columns=poly_columns)
+
+# 특성 추출 사용(일변량 사용)
+from sklearn.feature_selection import f_regression
+select = SelectPercentile(percentile=50)
+select.fit(X_train_poly, y_train)
+
+# 특성 추출 점수 확인
+select_score_df = DataFrame(select.scores_.reshape(1,-1), columns=poly_columns)
+select_score_df.T.sort_values(by=0, ascending=False)
+
+# 특성 추출 데이터 셋 변경 및 확인
+X_train_selected = select.transform(X_train_poly)
+X_test_selected = select.transform(X_test_poly)
+
+# 선택된 특성 확인
+X_train_poly.columns[select.get_support()]
+
+# 특성 추출 사용(모델사용)
+from sklearn.ensemble import RandomForestClassifier
+select2 = SelectFromModel(RandomForestClassifier(random_state=42),threshold=0.1)
+select2.fit(X_train_poly, y_train)
+
+# 특성 추출 점수 확인
+select_score_df2 = DataFrame(select2.estimator_.feature_importances_.reshape(1,-1), columns=poly_columns)
+select_score_df2.T.sort_values(by=0, ascending=False)
+
+# 특성 추출 데이터 셋 변경 및 확인
+X_train_selected = select2.transform(X_train_poly)
+X_test_selected = select2.transform(X_test_poly)
+
+
+# 모델 적용
+from sklearn.ensemble import GradientBoostingClassifier
+gb=GradientBoostingClassifier()
+gb.fit(X_train_selected, y_train)
+gb.score(X_test_selected, y_test)
+
+# 변수의 개수 확인
+percent_list = [0.001,0.01,0.05,0.1,0.2,0.5]
+ll=[]
+for i in percent_list :
+  select2 = SelectFromModel(RandomForestClassifier(random_state=42),threshold=i)
+  select2.fit(X_train_poly, y_train)
+  X_train_selected = select2.transform(X_train_poly)
+  X_test_selected = select2.transform(X_test_poly)
+  gb=GradientBoostingClassifier()
+  gb.fit(X_train_selected, y_train)
+  ll.append(gb.score(X_test_selected, y_test))

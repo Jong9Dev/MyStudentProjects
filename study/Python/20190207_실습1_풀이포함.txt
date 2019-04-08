@@ -1,0 +1,40 @@
+아래와 같은 데이터 프레임 생성 후
+
+name price qty
+apple 2000 5
+mango 1500 4
+banana 500 10
+cherry 400 NA
+
+1) qty의 평균
+2) price가 1000 이상인 과일 이름 출력
+3) cherry, banana, mango, apple 순 출력
+4) 세 번째 row에 추가 peach 추가 (price : 2500, qty : 3)
+5) qty -> QTY 수정
+
+=============================================
+df1 = DataFrame({'name' : ['apple','mango','banana','cherry'],
+                 'price' : [2000,1500,500,400],
+                 'qty' : [5,4,10, NA]})
+
+1) 
+df1['qty'].mean()
+
+2) 
+df1.loc[df1.price >= 1000, 'name' ]
+
+3) 
+df1.index = df1.name
+df1 = df1.drop('name',axis=1)
+df1.reindex(['cherry', 'banana', 'mango', 'apple'])
+
+4) 
+df1 = df1.reindex(['cherry', 'banana', 'peach', 'mango', 'apple'])
+df1.loc['peach','price'] = 2500
+df1.loc['peach','qty'] = 3
+
+5) 
+ll = list(df1.columns)
+ll[1] = 'QTY'
+df1.columns = ll
+

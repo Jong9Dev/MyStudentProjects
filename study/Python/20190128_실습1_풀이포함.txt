@@ -1,0 +1,13 @@
+l1=['345-4958','334-0948','394-9050','473-3853']
+l2=['서울','경기','부산','제주']
+area_no={'서울':"02",'경기':"031",'부산':"051" ,'제주':"064"}
+
+[풀이]
+>>> for i, j in zip(l1,l2) :
+	ll.append(area_no.get(j) + ')' + i )
+
+>>> for i in range(0,4) :
+	ll.append(area_no.get(l2[i]) + ')' + l1[i] )
+
+>>> ff = lambda x, y : area_no.get(y) + ')'  +  x
+>>> list(map(ff,l1,l2))

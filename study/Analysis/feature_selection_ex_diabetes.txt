@@ -1,0 +1,51 @@
+# 당뇨병 데이터 셋 특성확장, 추출, 분석 
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.model_selection import train_test_split
+from sklearn.feature_selection import SelectPercentile
+from sklearn.feature_selection import SelectFromModel
+from sklearn import datasets
+
+diabetes = datasets.load_diabetes()
+X = diabetes.data
+y = diabetes.target
+
+diabetes_df = pd.DataFrame(X,columns=diabetes.feature_names)
+X_train, X_test, y_train, y_test = train_test_split(diabetes_df, diabetes.target, random_state=0)
+
+poly = PolynomialFeatures(degree=2).fit(X_train)
+poly.get_feature_names()
+poly.get_feature_names(X_train.columns) # 컬럼이름 확인
+poly_columns = poly.get_feature_names(X_train.columns)
+
+# 특성 확장 데이터 셋 변경
+X_train_poly = DataFrame(poly.transform(X_train), columns=poly_columns)
+X_test_poly = DataFrame(poly.transform(X_test), columns=poly_columns)
+
+# 특성 추출 사용(일변량 사용)
+from sklearn.feature_selection import f_regression
+select = SelectPercentile(score_func=f_regression, percentile=50)
+select.fit(X_train_poly, y_train)
+
+# 특성 추출 점수 확인
+select_score_df = DataFrame(select.scores_.reshape(1,-1), columns=poly_columns)
+select_score_df.T.sort_values(by=0, ascending=False)
+
+# 특성 추출 데이터 셋 변경 및 확인
+X_train_selected = select.transform(X_train_poly)
+X_test_selected = select.transform(X_test_poly)
+
+# 선택된 특성 확인
+X_train_poly.columns[select.get_support()]
+
+# 특성 추출 사용(모델사용)
+from sklearn.ensemble import RandomForestClassifier
+select2 = SelectFromModel(RandomForestClassifier(random_state=42),threshold='median')
+select2.fit(X_train_poly, y_train)
+
+# 특성 추출 점수 확인
+select_score_df2 = DataFrame(select2.estimator_.feature_importances_.reshape(1,-1), columns=poly_columns)
+select_score_df2.T.sort_values(by=0, ascending=False)
+
+# 특성 추출 데이터 셋 변경 및 확인
+X_train_selected = select2.transform(X_train_poly)
+X_test_selected = select2.transform(X_test_poly)

@@ -1,0 +1,47 @@
+1. movie_ex1.csv 파일을 읽고
+1) 요일별 연령대의 극장 이용률 평균 구하여라
+mov = pd.read_csv('movie_ex1.csv', encoding='cp949')
+
+sol1(
+dat2 = mov.년.map(str)+'-'+mov.월.map(str)+'-'+mov.일.map(str)
+mov['요일'] = pd.to_datetime(dat2).map(lambda x: datetime.strftime(x,'%A'))
+mov.groupby(['요일','연령대'])['이용_비율(%)'].mean()
+
+sol2)
+mov['날짜'] = list(map(f1,mov['년'],mov['월'], mov['일']))
+
+2) 서울에서 극장 이용률이 가장 높은 지역을 찾고,
+그 지역의 각 연령대별로 성별 이용률을 비교하기 위한 막대그래프 출력
+
+seoul = mov[mov['지역-시도'] == '서울특별시']
+a1 = seoul.groupby('지역-시군구')['이용_비율(%)'].mean().idxmax()
+df1 = seoul[seoul['지역-시군구'] == a1]
+plot1 = df1.groupby(['연령대','성별'])['이용_비율(%)'].mean().unstack()
+
+plt.rc('font',family = 'Malgun Gothic')
+plot1.plot(kind='bar')
+plt.xticks(rotation=30)
+plt.ylabel('이용_비율(%)')
+
+2. taxi_call.csv 파일을 읽고
+taxi = pd.read_csv("taxi_call.csv", encoding='cp949')
+
+1) 각 구별로 가장 콜 수가 많은 시간대와  발신지 및 통화건수를 함께 출력
+sol1)
+taxi2 = taxi.groupby(['발신지_시군구','시간대'])['통화건수'].sum()
+f1 = lambda x : x.sort_values(ascending=False)[0:1]
+taxi2.groupby(level=0,group_keys=False).apply(f1)
+
+sol2)
+taxi2.groupby(level=0).idxmax()
+taxi2[taxi2.groupby(level=0).idxmax()]
+
+2) 오전,오후,야간,심야 시간대 별로 각 구별 택시 이용 현황을 출력
+
+05 ~ 12 : 오전
+12 ~ 20 : 오후
+20 ~ 24 : 야간
+24 ~ 05 : 심야
+
+taxi['구분'] = pd.cut(taxi['시간대'], [0,5,12,20,24], labels=['심야','오전','오후','야간'], right=False)
+taxi.groupby(['발신지_시군구','구분'])['통화건수'].sum()

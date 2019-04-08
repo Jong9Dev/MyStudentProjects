@@ -1,0 +1,51 @@
+1. cctv 데이터를 불러오고
+cctv = pd.read_csv("cctv.csv", encoding='cp949')
+cctv['rate'] = round(cctv['검거'] / cctv['발생'] * 100,2)
+
+1) 각 년도별 검거율 증가추이를 각 구별로 비교할 수 있도록 plot 도표 그리기
+data1 = cctv.pivot('년도','구','rate')
+data1.plot()
+
+2) y축 이름 설정
+plt.ylabel('검거율')
+
+3) 그래프 이름 설정
+plt.title('구별 검거율 변화 추이')
+
+4) y축 범위 변경
+plt.ylim([0,150])
+plt.legend(loc='upper right')
+
+5) x축 눈금에 모든 년도 출력
+xx = data1.index.values
+plt.xticks(xx)
+
+
+2. subway.csv 파일을 읽고
+각 라인번호 별로 승하차의 시간별 증감추이를 승,하차 각각 그래프로 표현
+(x축 눈금은 하나의 시간대만 표시 : 0506 => 05)
+
+subway = pd.read_csv("subway.csv",encoding='cp949')
+f1 = lambda x : "%04d" % x
+subway['시간'] = subway['시간'].map(f1)
+subway['시간'] = subway['시간'].str[:2]
+data2 = subway.pivot('시간','노선번호',['승차','하차'])
+
+# 그래프 및 legend 설정
+ax[0].plot(data2['승차'])
+ax[1].plot(data2['하차'])
+plt.legend(data2['승차'].columns.values)
+
+
+3. cctv 데이터를 불러오고
+1) 각 구별 검거율의 평균이 가장 낮은 구의 각 년도별 검거율을 막대그래프로 표현
+cctv=pd.read_csv("cctv.csv", encoding='cp949')
+cctv['rate']=cctv['검거'] / cctv['발생'] * 100
+
+2) 각 구별 검거율의 평균이 가장 낮은 구의 각 년도별 검거율을 막대그래프로 표현
+cctv.pivot('구','년도','rate').mean(1).idxmin()
+cctv.pivot('구','년도','rate').mean(1).sort_values()
+
+plt.rc('font', family='Malgun Gothic')
+plt.xticks(rotation=30)
+cctv.pivot('구','년도','rate').loc['관악구'].plot(kind='bar')
